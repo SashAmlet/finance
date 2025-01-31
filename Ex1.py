@@ -46,13 +46,33 @@ def plot_histograms(returns, num_bins=50):
     plt.show()
 
 def get_historical_returns(tickers, start_date, end_date):
+    
+    def get_dividends(tickers, start_date, end_date):
+        dividends = {}
+        for ticker in tickers:
+            stock = yf.Ticker(ticker)
+            dividends[ticker] = stock.dividends[start_date:end_date]
+        return dividends
+
     # Завантаження даних про ціни акцій
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-    
+
+    # Завантаження даних про дивіденди
+    dividends = get_dividends(tickers, start_date, end_date)
+
     # Перевірка, чи дані завантажилися коректно
-    if data.empty:
+    if data.empty:# or dividends is None:
         print("Дані не завантажилися. Перевірте тикери та дати.")
         return np.array([])
+    
+    # Додавання дивідендів до цін акцій
+    for ticker in tickers:
+        if ticker in dividends:
+            # Фільтрація дат, які є в обох серіях
+            dividend_dates = dividends[ticker].index.strftime('%Y-%m-%d').tolist()
+            price_dates = data[ticker].index.strftime('%Y-%m-%d').tolist()
+            intersection = list(set(dividend_dates) & set(price_dates))
+            data.loc[intersection, ticker] = data.loc[intersection, ticker].add(dividends[ticker].loc[intersection].values, fill_value=0)
     
     # Обчислення щоденних доходностей (у відсотках) на основі зміни ціни на акції
     clean_data = data.dropna()
@@ -118,7 +138,12 @@ end_date = '2023-01-01'
 
 historical_returns = get_historical_returns(tickers, start_date, end_date)
 mean_returns = np.mean(historical_returns, axis=0)  # Ожидаемые доходности активов
-target_return = 0.0015    # Целевая доходность портфеля
+target_return = 12.0015    # Целевая доходность портфеля
+
+
+if any(target_return > element for element in mean_returns):
+    print("ERROR")
+    sys.exit()
 
 # export_to_excel(historical_returns, tickers)
 
