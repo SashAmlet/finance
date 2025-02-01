@@ -65,6 +65,7 @@ def get_historical_returns(tickers, start_date, end_date):
         print("Дані не завантажилися. Перевірте тикери та дати.")
         return np.array([])
     
+    data_with_dividends = data.copy()
     # Додавання дивідендів до цін акцій
     for ticker in tickers:
         if ticker in dividends:
@@ -72,11 +73,13 @@ def get_historical_returns(tickers, start_date, end_date):
             dividend_dates = dividends[ticker].index.strftime('%Y-%m-%d').tolist()
             price_dates = data[ticker].index.strftime('%Y-%m-%d').tolist()
             intersection = list(set(dividend_dates) & set(price_dates))
-            data.loc[intersection, ticker] = data.loc[intersection, ticker].add(dividends[ticker].loc[intersection].values, fill_value=0)
-    
+            data_with_dividends.loc[intersection, ticker] = data_with_dividends.loc[intersection, ticker].add(dividends[ticker].loc[intersection].values, fill_value=0)
+
+
     # Обчислення щоденних доходностей (у відсотках) на основі зміни ціни на акції
     clean_data = data.dropna()
-    returns = (clean_data / clean_data.shift(1) - 1).iloc[1:]
+    clean_data_with_dividends = data_with_dividends.dropna()
+    returns = (clean_data_with_dividends / clean_data.shift(1) - 1).iloc[1:]
     
     return returns
 
